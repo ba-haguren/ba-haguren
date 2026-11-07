@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ダメージ確率計算ツール</title>
+<style>
+:root{--bg:#f1f4f3;--sf:#fff;--tx:#1d2724;--mu:#5a6862;--bd:#b4c0bb;--tint:#eef2f0;--ac:#1d6b57;--hi:#b45309;--ok:#15803d;--rd:#b91c1c}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111716;--sf:#1a2220;--tx:#e6eeeb;--mu:#93a39d;--bd:#33423d;--tint:#202b28;--ac:#4cbf9f;--hi:#f59e5b;--ok:#4ade80;--rd:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111716;--sf:#1a2220;--tx:#e6eeeb;--mu:#93a39d;--bd:#33423d;--tint:#202b28;--ac:#4cbf9f;--hi:#f59e5b;--ok:#4ade80;--rd:#f87171;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:44px}
+body{margin:0 auto;background:var(--bg);color:var(--tx);font:15px/1.5 "Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;max-width:760px;padding:12px 12px calc(24px + env(safe-area-inset-bottom,0px))}
+h1{font-size:18px;margin:4px 0 10px}h2{font-size:15px;margin:0 0 8px}
+#mini{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:baseline;background:var(--ac);color:#fff;padding:6px 12px;margin:0 -12px 10px;font-size:12px}
+#mini b{font-size:17px}
+section{background:var(--sf);border:1px solid var(--bd);border-radius:6px;padding:12px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--mu);margin-bottom:2px}
+input,textarea,select,button{font:inherit}
+input:not([type=checkbox]),textarea,select{color:var(--tx);background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:8px;width:100%}
+input:not([type=checkbox]):focus,textarea:focus,select:focus{outline:2px solid var(--ac);outline-offset:-1px}
+textarea{min-height:110px;font-size:13px}
+button{width:auto;white-space:nowrap;cursor:pointer;background:var(--ac);color:#fff;border:1px solid var(--ac);border-radius:4px;padding:8px 14px;font-weight:600}
+button.sub{background:transparent;color:var(--tx);border-color:var(--bd);font-weight:400}
+.g{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.g4{grid-template-columns:repeat(2,1fr)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.card{border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:4px;padding:10px;margin-bottom:10px}
+.card .top{display:flex;gap:6px;margin-bottom:8px;align-items:center}.card .top input{font-weight:600}
+.big{font-size:36px;font-weight:700;color:var(--hi);line-height:1.1}.big small{display:block;font-size:12px;font-weight:400;color:var(--mu);margin-top:2px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:13px;margin-top:10px}
+.stats b{display:block;font-size:15px}.mu{color:var(--mu);font-size:12px}
+.warn{color:var(--rd);font-size:12px}svg{width:100%;height:auto;display:block}
+.card .hd{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:4px 8px 4px 2px;font-size:20px;line-height:1;color:var(--mu);align-self:center}
+.card .sm{padding:0 0 0 30px;cursor:pointer;word-break:break-all}.card .act{margin:0 0 8px}
+details>summary{cursor:pointer}
+@media(min-width:560px){.g4{grid-template-columns:repeat(4,1fr)}}
+details.man{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:12px;font-size:14px;line-height:1.7}
+details.man summary{cursor:pointer;font-size:15px}
+details.man h3{font-size:14px;margin:18px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--bd)}
+details.man p{margin:6px 0}details.man ul,details.man ol{margin:6px 0;padding-left:22px}details.man li{margin:3px 0}
+details.man table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+details.man th,details.man td{border:1px solid var(--bd);padding:5px 7px;text-align:left;vertical-align:top}
+details.man th{background:var(--bg)}details.man a{color:var(--ac);word-break:break-all}
+details.man .note{color:var(--mu);font-size:12px}details.man .refs .mu{display:inline-block}
+
+.hdr{display:flex;align-items:center;gap:8px;margin:4px 0 8px}.hdr h1{flex:1;margin:0;text-align:center;font-size:16px}.hdr button{flex:none}
+details.man>summary{display:none}
+.card [data-drag]{touch-action:none;cursor:grab}
+.card .hd{padding:8px 14px;font-size:24px}
+.card .top .mu[data-drag]{padding:8px 4px}
+body.dragging .card>*:not(.top){display:none}
+body.dragging .card{margin-bottom:6px}
+.card{position:relative}.card.shift{transition:transform .18s ease}.card.drag{opacity:1;z-index:30;transition:none;background:var(--sf);box-shadow:0 10px 24px rgba(0,0,0,.35)}
+
+:root{--in:var(--sf);--onac:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--in:#0d1312;--onac:#06130f;--bd:#52665f;--mu:#b4c3bd;--tint:#27342f}}
+:root[data-theme="dark"]{--in:#0d1312;--onac:#06130f;--bd:#52665f;--mu:#b4c3bd;--tint:#27342f}
+input:not([type=checkbox]),textarea,select{background:var(--in)}
+button,#mini{color:var(--onac)}button.sub{color:var(--tx)}
+::placeholder{color:var(--mu);opacity:.75}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) section,:root:not([data-theme="light"]) details.man{border-color:var(--bd)}}
+
+/* 仕上げ */
+details.man:not([open]){display:none}
+body{max-width:1120px}
+.lay{display:block}
+.lay .out{position:static}
+@media(min-width:900px){
+ .lay{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+ .lay .out{position:sticky;top:48px;max-height:calc(100vh - 60px);overflow-y:auto}
+}
+section{box-shadow:0 1px 2px rgba(0,0,0,.04)}
+h2{font-weight:700}
+.row button{min-height:38px}
+input:not([type=checkbox]),select{min-height:38px}
+
+/* ダークテーマ（無彩色ベース） */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#131418;--sf:#1c1e24;--tx:#e9eaee;--mu:#a2a6b2;--bd:#3a3d47;--tint:#242730;--ac:#6ea8fe;--hi:#a9c9ff;--ok:#5fd38d;--rd:#ff8080;--in:#15161b;--onac:#0a1424;color-scheme:dark}:root:not([data-theme="light"]) #mini{background:var(--tint);color:var(--mu);border-bottom:1px solid var(--bd)}#mini b{color:var(--hi)}}
+:root[data-theme="dark"]{--bg:#131418;--sf:#1c1e24;--tx:#e9eaee;--mu:#a2a6b2;--bd:#3a3d47;--tint:#242730;--ac:#6ea8fe;--hi:#a9c9ff;--ok:#5fd38d;--rd:#ff8080;--in:#15161b;--onac:#0a1424;color-scheme:dark}
+:root[data-theme="dark"] #mini{background:var(--tint);color:var(--mu);border-bottom:1px solid var(--bd)}#mini b{color:var(--hi)}
+input:not([type=checkbox]),textarea,select{font-size:16px}
+</style>
+</head>
+<body>
+<div class="hdr"><button class="sub" id="howto">使い方</button><h1>ダメージ確率計算ツール</h1><button class="sub" id="theme" aria-label="ダークモード切替">🌙</button></div>
+<details class="man" id="man"><summary><b>使い方</b></summary>
+
+<h3>基本</h3>
+<ol>
+<li>「目標ダメージ」と「全体の会心率」（%）を入力します。</li>
+<li>Schale DBのダメージ表示を「テキストから取り込み」に貼り付けて、「カードを作成」を押します。使うスキルを全部貼ります。</li>
+<li>結果欄の「目標以上になる確率」を見ます。入力を変えると自動で再計算されます。</li>
+</ol>
+<p>同じスキルを2回撃つときは、カードを「複製」します。</p>
+
+<h3>貼り付ける書式</h3>
+<pre style="background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:8px;font-size:13px;overflow-x:auto">ヒット1-2 (407.19%)
+87,525 - 115,541
+会心
+266,110 - 351,290</pre>
+<ul>
+<li>「ヒット」の行から1枚のカードになります。複数スキルをまとめて貼れます。</li>
+<li>「会心」の行がないスキル（ミカなど）は、確定会心になります。このとき会心率を変えても結果は変わりません。</li>
+<li>手入力するときは「＋カード追加」を使います。</li>
+</ul>
+
+<h3>カードの操作</h3>
+<p>並べ替えは左端の「⠿」をドラッグします。複製・削除はカードを開くとあります。カードは上から順に撃つものとして扱い、順序が結果に効くのはHP依存カードだけです。</p>
+
+<h3>カードの詳細設定</h3>
+<p>カードを開くと、取り込み後でも次の設定を変えられます。</p>
+<ul>
+<li><b>非会心／会心の下限・上限、Hit数</b>：取り込んだ値の修正や手入力に使います。</li>
+<li><b>敵の数</b>：Hit数に掛けます。全体攻撃で複数の敵に当たるときに使います。HP依存カードでは無視されます。</li>
+<li><b>会心率</b>：「全体の会心率」「確定会心」「確定非会心」「数値指定」から選びます。</li>
+<li><b>回避率</b>：回避されたヒットは0ダメージになります。</li>
+<li><b>HP依存</b>：チェックを入れると倍率の欄が出ます（下の「HP依存」を見てください）。</li>
+</ul>
+
+<h3>HP依存（ミカ・ガイドフィーナなど）</h3>
+<ol>
+<li>「敵最大HP」と「敵の現在HP」（撃ち始める時点のHP）を入れます。現在HPが空なら満タンとして扱います。</li>
+<li>カードを開いて「HP依存」にチェックを入れ、満タン時とHP0時の倍率を入れます（例：ミカは2倍と1倍）。</li>
+<li>貼るダメージは、撃ち始める時点のHPで出した値にします。</li>
+<li>カードは、必ず実際に撃つ順に並べます。順番に計算するので、並びが違うと結果が変わります。</li>
+</ol>
+
+<h3>蓄積（ワカモ・ケイ・イロハ）</h3>
+<ol>
+<li>蓄積スキルに使うカードを先に取り込みます。</li>
+<li>「＋蓄積スキル追加」を押して、プリセット（ワカモ／ケイ／イロハ）を選びます。</li>
+<li>「蓄積するカード」にチェックを入れます。蓄積スキル自身の初撃は含めません。</li>
+<li>プリセットごとの項目を入れます。<br>
+ワカモ：基本攻撃力、神秘特効、EXダメージバフ、対象のEXダメージカット、地形適性<br>
+ケイ：基本攻撃力、敵の防御倍率、敵の被ダメージ増減、属性相性<br>
+イロハ：「上限を決めるカード」と上限係数</li>
+</ol>
+<p>爆発倍率は、入れた項目から自動で計算されます。</p>
+
+<h3>注意</h3>
+<ul>
+<li>HP依存と蓄積は併用できません。</li>
+<li>途中で倍率や会心率が変わる場合（グロッキーなど）は対象外です。区間ごとにカードを分けます。</li>
+<li>「約」が付く確率は近似値です。僅差の比較には向きません。</li>
+<li>「安定値」は、ダメージの上限が10,969,999に張り付いているときだけ入れます。</li>
+</ul>
+</details>
+
+<div id="mini"><span>目標以上になる確率</span><b>—</b></div>
+<div class="lay">
+<div class="in">
+<section>
+<h2>条件</h2>
+<div class="g">
+<div><label>目標ダメージ</label><input id="target" type="number" inputmode="numeric" value="14000000"></div>
+<div><label>全体の会心率 (%)</label><input id="crit" type="number" inputmode="decimal" step="0.01" value="55.93"></div>
+<div><label>安定値</label><input id="stable" type="number" inputmode="numeric"></div>
+<div><label>敵最大HP</label><input id="maxhp" type="number" inputmode="numeric"></div>
+<div><label>敵の現在HP</label><input id="curhp" type="number" inputmode="numeric"></div>
+</div>
+</section>
+<section>
+<h2>テキストから取り込み</h2>
+<label>カード名（任意）</label><input id="prefix" style="margin-bottom:8px">
+<textarea id="paste" placeholder="ヒット1-2 (407.19%)&#10;87,525 - 115,541&#10;会心&#10;266,110 - 351,290"></textarea>
+<div class="row"><button id="imp">カードを作成</button><span id="impmsg" class="warn" style="align-self:center"></span></div>
+
+</section>
+<section>
+<h2>カード</h2>
+<div id="cards"></div>
+<div class="row"><button class="sub" id="add">＋カード追加</button><button class="sub" id="openall">全て開く</button><button class="sub" id="closeall">全て閉じる</button><button class="sub" id="clr">全消去</button><button class="sub" id="undo" hidden>元に戻す</button></div>
+</section>
+<section>
+<h2>蓄積スキル（ワカモ・ケイ・イロハ型）</h2>
+<div id="accs" style="margin-top:8px"></div>
+<div class="row"><button class="sub" id="addacc">＋蓄積スキル追加</button></div>
+</section>
+</div>
+<aside class="out">
+<section id="res">
+<h2>結果</h2>
+<div class="big" id="prob">—</div>
+<div class="stats" id="stats"></div>
+<div class="warn" id="warns"></div>
+</section>
+<section>
+<h2>通過確率 ⇄ ダメージ</h2>
+<div class="g">
+<div><label>ダメージ</label><input id="qd" type="number" inputmode="numeric"></div>
+<div><label>→ 通過確率</label><div id="qdo" style="padding:7px 0;font-weight:600">—</div></div>
+<div><label>通過確率 (%)</label><input id="qp" type="number" inputmode="decimal" step="0.1"></div>
+<div><label>→ ダメージ</label><div id="qpo" style="padding:7px 0;font-weight:600">—</div></div>
+</div>
+</section>
+<section>
+<h2 style="display:flex;justify-content:space-between;align-items:center;gap:8px">それ以上になる確率<button class="sub" id="logt" style="padding:2px 12px;min-height:30px;font-size:13px">対数軸</button></h2><div id="ch1"></div>
+<h2 style="margin-top:12px">確率分布</h2><div id="ch2"></div>
+</section>
+</aside>
+</div>
+
+
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toLocaleString('ja-JP');
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+let cards=[],R=null,timer=null,UN=null;
+const KEY='dmgcalc.v1';
+function save(){try{localStorage.setItem(KEY,JSON.stringify({cards,acc:ACC,target:$('target').value,crit:$('crit').value,stable:$('stable').value,maxhp:$('maxhp').value,curhp:$('curhp').value}))}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s){cards=s.cards||[];ACC=s.acc||[];cards.forEach(c=>{if(!c.en)c.en=1;if(c.hp===undefined)c.hp=c.ha!==''&&c.ha!=null});$('target').value=s.target;$('crit').value=s.crit;['stable','maxhp','curhp'].forEach(k=>{if(s[k]!==undefined)$(k).value=s[k]})}}catch(e){}}
+const blank=()=>({open:true,name:'',cmin:0,cmax:0,nmin:0,nmax:0,hits:1,crit:'',eva:0,ha:'',hb:'',hp:false,en:1});
+
+/* ---------- engine ---------- */
+const FT=new Map();function fftT(n){let t=FT.get(n);if(t)return t;const h=n>>1,c=new Float64Array(h),s=new Float64Array(h);for(let k=0;k<h;k++){const a=2*Math.PI*k/n;c[k]=Math.cos(a);s[k]=Math.sin(a)}if(FT.size>=8)FT.clear();t={c,s};FT.set(n,t);return t}
+function fft(re,im,inv){const n=re.length,T=fftT(n),sg=inv?-1:1;
+ for(let i=1,j=0;i<n;i++){let b=n>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}
+ for(let len=2;len<=n;len<<=1){const h=len>>1,st=n/len;
+  for(let i=0;i<n;i+=len){for(let j=0;j<h;j++){
+   const cr=T.c[j*st],ci=sg*T.s[j*st],u=i+j,v=u+h,xr=re[v]*cr-im[v]*ci,xi=re[v]*ci+im[v]*cr;
+   re[v]=re[u]-xr;im[v]=im[u]-xi;re[u]+=xr;im[u]+=xi}}}
+ if(inv)for(let i=0;i<n;i++){re[i]/=n;im[i]/=n}}
+function conv(a,b){
+ if(a.length>b.length)[a,b]=[b,a];
+ const L=a.length+b.length-1,out=new Float64Array(L);
+ if(a.length<=48){for(let i=0;i<a.length;i++){const x=a[i];if(x===0)continue;for(let j=0;j<b.length;j++)out[i+j]+=x*b[j]}return out}
+ let n=1;while(n<L)n<<=1;
+ const ar=new Float64Array(n),ai=new Float64Array(n),br=new Float64Array(n),bi=new Float64Array(n);
+ ar.set(a);br.set(b);fft(ar,ai,false);fft(br,bi,false);
+ for(let i=0;i<n;i++){const r=ar[i]*br[i]-ai[i]*bi[i],m=ar[i]*bi[i]+ai[i]*br[i];ar[i]=r;ai[i]=m}
+ fft(ar,ai,true);let neg=0;
+ for(let i=0;i<L;i++){let v=ar[i];if(v<0){neg-=v;v=0}out[i]=v}
+ conv.neg=(conv.neg||0)+neg;return out}
+function pw(d,n){let res=new Float64Array([1]),base=d;
+ while(n>0){if(n&1)res=conv(res,base);n>>=1;if(n)base=conv(base,base)}return res}
+const CAP=10969999,G={st:0};
+const TB=[[4e6,100],[6248000,80],[8496000,65],[1e15,50]];let XS,YS;
+function buildTab(){XS=[0];YS=[0];for(let i=0;i<TB.length-1;i++){XS.push(TB[i][0]);YS.push(YS[i]+(TB[i][0]-XS[i])*TB[i][1]/100)}}
+const fwd=x=>{let i=XS.length-1;while(i>0&&x<=XS[i])i--;return YS[i]+(x-XS[i])*TB[i][1]/100};
+buildTab();
+function addRange(dist,a,b,w,D){
+ if(w<=0)return;
+ const A=a;let B=b;
+ if(b>=CAP&&G.st>0)B=Math.max(B,A/Math.min(1,G.st/(G.st+1000)+.2));
+ const put=v=>{const x=Math.min(CAP,v)/D,i=Math.floor(x);return[i,x-i]};
+ if(B<=A){const[i,f]=put(A);dist[i]+=w*(1-f);dist[i+1]+=w*f;return}
+ const K=Math.min(4000,Math.max(2,Math.ceil((Math.min(CAP,B)-A)/D)*4));
+ for(let k=0;k<K;k++){const[i,f]=put(A+(B-A)*(k+.5)/K);dist[i]+=w/K*(1-f);dist[i+1]+=w/K*f}}
+function computeBase(cs,gCrit,target){
+ conv.neg=0;
+ const act=cs.filter(c=>c.hits>0);
+ let maxT=0;for(const c of act)maxT+=c.hits*Math.max(c.cmax,c.nmax,c.cmin,c.nmin);
+ const D=G.D||Math.max(1,Math.ceil(maxT/200000));
+ let tot=G.pre||new Float64Array([1]);
+ for(const c of act){
+  const p=(c.crit===''||c.crit==null?gCrit:+c.crit/100),e=(+c.eva||0)/100;
+  const mx=Math.max(c.cmax,c.nmax)+1,d=new Float64Array(Math.floor(mx/D)+3);
+  d[0]+=e;
+  addRange(d,c.cmin,c.cmax,(1-e)*p,D);addRange(d,c.nmin,c.nmax,(1-e)*(1-p),D);
+  tot=conv(tot,pw(d,c.hits))}
+ let sum=0,mean=0,m2=0;for(let i=0;i<tot.length;i++){sum+=tot[i]}
+ for(let i=0;i<tot.length;i++){mean+=tot[i]*i*D;m2+=tot[i]*(i*D)**2}
+ mean/=sum;const sd=Math.sqrt(Math.max(0,m2/sum-mean*mean));
+ const suf=new Float64Array(tot.length+2);
+ for(let i=tot.length-1;i>=0;i--)suf[i]=suf[i+1]+tot[i];
+ return{tot,suf,D,sum,mean,sd,neg:conv.neg,maxT}}
+function pGE(r,T){if(r.sf)return r.sf(T);if(r.sp){const xs=r.sp.xs;let lo=0,hi=xs.length;while(lo<hi){const m=(lo+hi)>>1;xs[m]<T-1e-9?lo=m+1:hi=m}return Math.min(1,r.sp.suf[lo])}const x=T/r.D,j=Math.floor(x),f=x-j;
+ if(x<=0)return 1;if(j>=r.tot.length)return 0;
+ return Math.min(1,r.suf[j+1]+r.tot[j]*(1-f))}
+function dmgAt(r,q){if(r.sp){const xs=r.sp.xs;for(let i=xs.length-1;i>=0;i--)if(r.sp.suf[i]>=q)return xs[i];return 0}if(r.sf){let lo=0,hi=r.maxT;for(let i=0;i<50;i++){const m=(lo+hi)/2;r.sf(m)>=q?lo=m:hi=m}return lo}for(let i=r.tot.length-1;i>=0;i--)if(r.suf[i]>=q)return i*r.D;return 0}
+
+
+/* ---------- COS法・離散格子DP ----------
+ COS法: Fang & Oosterlee (2008)
+ 系統の使い分け: 連続成分を持つHit数N>=2でCOS、全退化なら離散DP */
+function hitComps(c,gc){
+ const p=(c.crit===''||c.crit==null?gc:+c.crit/100),e=(+c.eva||0)/100,out=[];
+ if(e>0)out.push({w:e,a:0,b:0});
+ const cuts=[CAP];
+ for(const[lo,hi,w]of[[c.cmin,c.cmax,(1-e)*p],[c.nmin,c.nmax,(1-e)*(1-p)]]){
+  if(w<=0)continue;
+  const A=lo,B=hi;
+  if(B<=A){const v=Math.min(CAP,A);out.push({w,a:v,b:v});continue}
+  const pt=[A,...cuts.filter(x=>x>A&&x<B),B];
+  for(let i=0;i<pt.length-1;i++){const y0=Math.min(CAP,pt[i]),y1=Math.min(CAP,pt[i+1]),ww=w*(pt[i+1]-pt[i])/(B-A);
+   out.push(y1-y0<1e-9?{w:ww,a:y0,b:y0}:{w:ww,a:y0,b:y1})}}
+ return out}
+function cosSetup(types){let mu=0,v=0,lo=0,hi=0;
+ for(const{n,comps}of types){let m=0,m2=0,mn=1e300,mx=-1e300;
+  for(const q of comps){m+=q.w*(q.a+q.b)/2;m2+=q.w*(q.a*q.a+q.a*q.b+q.b*q.b)/3;mn=Math.min(mn,q.a);mx=Math.max(mx,q.b)}
+  mu+=n*m;v+=n*(m2-m*m);lo+=n*mn;hi+=n*mx}
+ const sd=Math.sqrt(Math.max(v,0));
+ return{mu,sd,lo,hi,a:Math.max(lo,mu-12*sd)-1,b:Math.min(hi,mu+12*sd)+1}}
+function cosCoef(types,a,b,M,neg){const L=b-a,F=new Float64Array(M);F[0]=2/L;
+ for(let k=1;k<M;k++){const u=k*Math.PI/L;let lr=0,th=-u*a,ok=true;
+  for(const{n,comps}of types){let re=0,im=0;
+   for(const q of comps){const A=neg?-q.b:q.a,B=neg?-q.a:q.b,h=(B-A)/2,c=(A+B)/2,m=q.w*(h>0?Math.sin(u*h)/(u*h):1);re+=m*Math.cos(u*c);im+=m*Math.sin(u*c)}
+   const r=Math.hypot(re,im);if(r===0){ok=false;break}lr+=n*Math.log(r);th+=n*Math.atan2(im,re)}
+  F[k]=ok?2/L*Math.exp(lr)*Math.cos(th):0}
+ return F}
+function cosCdf(F,a,b,x){const L=b-a;if(x<=a)return 0;if(x>=b)return 1;const t=x-a;let s=0;
+ for(let k=F.length-1;k>=1;k--){const u=k*Math.PI/L;s+=F[k]*Math.sin(u*t)/u}return t/L+s}
+function cosResult(types,T){
+ const su=cosSetup(types),{a,b}=su;let M=4096,prev=null,last,conv=false;
+ for(;M<=65536;M*=2){const F1=cosCoef(types,a,b,M,false),F2=cosCoef(types,-b,-a,M,true);
+  const sf=x=>{const lo=cosCdf(F1,a,b,x);return lo<.5?Math.max(0,Math.min(1,1-lo)):Math.max(0,cosCdf(F2,-b,-a,-x))};
+  const v=sf(T),w=sf(su.mu);last={sf,M};
+  if(prev&&Math.abs(v-prev[0])<=1e-6*v+1e-15&&Math.abs(w-prev[1])<1e-8){conv=true;break}prev=[v,w]}
+ const NG=Math.max(200,Math.min(3000,Math.floor(6e7/last.M/2))),D=Math.max(1,Math.ceil(b/NG)),N=Math.ceil(b/D)+2;
+ const suf=new Float64Array(N+2),tot=new Float64Array(N+1);
+ for(let i=0;i<=N;i++)suf[i]=last.sf(i*D);
+ for(let i=0;i<=N;i++)tot[i]=Math.max(0,suf[i]-suf[i+1]);
+ return{tot,suf,D,sum:1,mean:su.mu,sd:su.sd,neg:0,maxT:su.hi,sf:last.sf,method:'cos',M:last.M,conv}}
+function sparseDP(types){let cur=new Map([[0,1]]),ops=0;
+ for(const{n,comps}of types)for(let h=0;h<n;h++){const nx=new Map();ops+=cur.size*comps.length;if(ops>6e7)return null;
+  for(const[v,p]of cur)for(const q of comps){const k=v+Math.round(q.a);nx.set(k,(nx.get(k)||0)+p*q.w)}cur=nx;if(cur.size>3e6)return null}
+ const xs=Float64Array.from([...cur.keys()].sort((a,b)=>a-b)),n=xs.length,ps=new Float64Array(n),suf=new Float64Array(n+1);
+ for(let i=0;i<n;i++)ps[i]=cur.get(xs[i]);for(let i=n-1;i>=0;i--)suf[i]=suf[i+1]+ps[i];
+ let mean=0,m2=0,sm=0;for(let i=0;i<n;i++){sm+=ps[i];mean+=ps[i]*xs[i]}mean/=sm;for(let i=0;i<n;i++)m2+=ps[i]*(xs[i]-mean)**2;
+ const maxT=xs[n-1],D=Math.max(1,Math.ceil(maxT/3000)),N=Math.floor(maxT/D)+2,tot=new Float64Array(N+1),sg=new Float64Array(N+2);
+ for(let i=0;i<n;i++)tot[Math.floor(xs[i]/D)]+=ps[i];
+ let k=0;for(let g=0;g<=N;g++){while(k<n&&xs[k]<g*D-1e-9)k++;sg[g]=suf[k]}
+ return{tot,suf:sg,D,sum:sm,mean,sd:Math.sqrt(m2/sm),neg:0,maxT,sp:{xs,suf},np:n,method:'lat'}}
+function computeAuto(cs,gc,T){
+ if(G.st>0)return null;const types=[];let Nd=0,allAtom=true,d0=1,d1=0;
+ for(const c of cs){if(!(c.hits>0))continue;const comps=hitComps(c,gc);types.push({n:c.hits,comps});
+  const aw=comps.filter(q=>q.a===q.b).reduce((t,q)=>t+q.w,0);if(aw<1e-12)Nd+=c.hits;
+  for(let h=0;h<c.hits&&h<5000;h++){const nd1=d1*aw+d0*(1-aw);d0*=aw;d1=nd1}
+  for(const q of comps){if(q.a!==q.b||Math.abs(q.a-Math.round(q.a))>1e-6)allAtom=false}}
+ if(!types.length)return null;
+ if(allAtom){const r=sparseDP(types);if(r)return r}
+ if(Nd>=2||d0+d1<1e-9)return cosResult(types,T);
+ return null}
+const methodLabel=r=>r.method==='cos'?'COS法（項数'+r.M+'・'+(r.conv?'収束確認済み':'未収束')+'）':r.method==='lat'?'離散DP（厳密・'+r.np+'点）':r.method==='hp'?'HP依存の状態DP':'グリッドFFT（Δ='+r.D+'）';
+
+/* ---------- accumulation ---------- */
+let ACC=[];
+const PRE={wk:{type:'fixed',alpha:100,m:100,atk:'',pct:1322,dec:true},kei:{type:'fixed',alpha:10,m:100,atk:'',pct:5000,dec:true},iroha:{type:'hit',alpha:150,m:100,kappa:120,dec:false}};
+const idxs=s=>String(s||'').split(/[,\s、]+/).map(Number).filter(n=>n>0);
+const sumTxt=s=>idxs(s).length?idxs(s).map(i=>'#'+i).join(' '):'選択してください';
+function remapAcc(fn){ACC.forEach(a=>['W','Q'].forEach(k=>{a[k]=idxs(a[k]).map(fn).filter(n=>n>0).join(',')}))}
+const capVal=a=>a.atk>0?a.atk*a.pct/100:0;
+const accOk=a=>[a.alpha,a.m].every(Number.isFinite)&&idxs(a.W).length&&(a.type==='hit'?idxs(a.Q).length&&a.kappa>0:capVal(a)>0);
+function compute(cs,gc,T){
+ cs=cs.map(c=>isHp(c)?c:{...c,hits:c.hits*Math.max(1,Math.round(+c.en||1))});
+ const HM=cs.some(isHp)&&+$('maxhp').value>0;
+ const A=ACC.filter(accOk);
+ if(!A.length){if(!HM){const ra=computeAuto(cs,gc,T);if(ra)return ra}const r0=HM?computeHP(cs,gc):computeBase(cs,gc,T);r0.method=HM?'hp':'fft';return r0}
+ const sel=s=>idxs(s).map(i=>cs.find(c=>c._i===i)).filter(Boolean);
+ const hm=c=>c.hits*Math.max(c.cmax,c.nmax,c.cmin,c.nmin),sm=l=>l.reduce((t,c)=>t+hm(c),0);
+ const used=new Set();let dup=false;
+ for(const a of A){a.Wc=sel(a.W);a.Qc=a.type==='hit'?sel(a.Q):[];[...a.Wc,...a.Qc].forEach(c=>{if(used.has(c))dup=true;used.add(c)})}
+ const free=cs.filter(c=>!used.has(c));
+ let maxT=free.reduce((t,c)=>t+hm(c)*(HM?hpScale(c):1),0);
+ for(const a of A){const Sm=sm(a.Wc),Rm=sm(a.Qc),cap=a.type==='hit'?a.kappa/100*Rm:capVal(a);
+  a.ext=Sm+Rm+a.m/100*Math.min(cap,a.alpha/100*Sm)+4;maxT+=a.ext}
+ const D=Math.max(1,Math.ceil(maxT/(HM?20000:200000)));G.D=D;let maxk=1;const sats=[],Ys=[];
+ try{
+  let tot=HM?null:computeBase(free,gc,T).tot;
+  for(const a of A){
+   const S=computeBase(a.Wc,gc,T).tot,g=x=>a.dec?Math.min(CAP,fwd(x)):x,m=a.m/100,al=a.alpha/100;
+   const Y=new Float64Array(Math.floor(a.ext/D)+6);
+   const put=(v,w)=>{const x=v/D,i=Math.floor(x),f=x-i;Y[i]+=w*(1-f);Y[i+1]+=w*f};
+   let sat=0;if(a.type==='fixed'){const C=capVal(a);for(let i=0;i<S.length;i++)if(S[i]>0){const s=i*D;if(al*s>C)sat+=S[i];put(s+g(m*Math.min(C,al*s)),S[i])}}
+   else{
+    const R=computeBase(a.Qc,gc,T).tot,k=Math.max(1,Math.ceil(Math.sqrt(S.length*R.length/3e6)));maxk=Math.max(maxk,k);
+    const co=d=>{const n=Math.ceil(d.length/k),w=new Float64Array(n),p=new Float64Array(n);for(let i=0;i<d.length;i++){const j=Math.floor(i/k);w[j]+=d[i];p[j]+=d[i]*i}for(let j=0;j<n;j++)p[j]=w[j]>0?p[j]/w[j]*D:0;return[w,p]};
+    const[ws,ps]=co(S),[wr,pr]=co(R),kp=a.kappa/100;
+    for(let x=0;x<ws.length;x++){if(ws[x]<=0)continue;for(let y=0;y<wr.length;y++){const w=ws[x]*wr[y];if(w<1e-18)continue;const s=ps[x],r=pr[y];if(al*s>kp*r)sat+=w;put(r+s+g(m*Math.min(kp*r,al*s)),w)}}}
+   sats.push(sat);if(HM)Ys.push({a,Y});else tot=conv(tot,Y)}
+  if(HM){const r=computeHP(cs,gc,D,Ys,maxT);r.maxT=maxT;r.coarse=maxk;r.sats=sats;r.dup=dup;return r}
+  G.pre=tot;const r=computeBase([],gc,T);r.maxT=maxT;r.coarse=maxk;r.sats=sats;r.dup=dup;return r
+ }finally{G.D=0;G.pre=null}}
+
+/* ---------- 厳密モード（有理数・BigInt） ---------- */
+const gcdB=(a,b)=>{while(b){[a,b]=[b,a%b]}return a};
+function exactP(cs,gc,T){
+ if(ACC.some(accOk)||cs.some(isHp))return null;
+ if(G.st>0)return null;const bp=[CAP];for(const c of cs)for(const[a,b]of[[c.nmin,c.nmax],[c.cmin,c.cmax]])if(b>CAP||bp.some(x=>a<x&&x<b))return null;
+ const act=cs.filter(c=>c.hits>0);if(!act.length)return null;
+ T=Math.ceil(T);const D=10n**8n,BI=BigInt,fact=[1n];for(let i=1;i<=400;i++)fact.push(fact[i-1]*BI(i));
+ const C=(n,k)=>fact[n]/(fact[k]*fact[n-k]);
+ let st=new Map([['0|',{off:0,w:1n,m:{}}]]),Lw=1n,tn=0;
+ for(const c of act){
+  const n=c.hits;if(!Number.isInteger(n)||n>400||(+c.eva||0)>0)return null;
+  if(![c.nmin,c.nmax,c.cmin,c.cmax].every(Number.isInteger)||c.nmax<c.nmin||c.cmax<c.cmin)return null;
+  const pc=(c.crit===''||c.crit==null)?gc*100:+c.crit,pn=BI(Math.round(pc*1e6));
+  const wc=c.cmax-c.cmin+1,wn=c.nmax-c.nmin+1,nx=new Map();
+  for(const[,S]of st)for(let k=0;k<=n;k++){
+   const w=S.w*C(n,k)*pn**BI(k)*(D-pn)**BI(n-k),m={...S.m};
+   if(wc>1)m[wc]=(m[wc]||0)+k;if(wn>1)m[wn]=(m[wn]||0)+n-k;
+   const off=S.off+k*c.cmin+(n-k)*c.nmin,key=off+'|'+Object.keys(m).filter(x=>m[x]>0).sort((a,b)=>a-b).map(x=>x+':'+m[x]).join(',');
+   const o=nx.get(key);if(o)o.w+=w;else nx.set(key,{off,w,m});
+   if(nx.size>2e5)return null}
+  st=nx;const l=BI(wc)*BI(wn)/gcdB(BI(wc),BI(wn));Lw*=l**BI(n);tn+=n}
+ let terms=0;for(const[,S]of st)terms+=Object.values(S.m).reduce((a,m)=>a*(m+1),1);
+ if(terms>3e5)return null;
+ const L=D**BI(tn)*Lw;let le=0n;
+ for(const[,S]of st){
+  const ws=Object.keys(S.m).map(Number).filter(w=>S.m[w]>0),ms=ws.map(w=>S.m[w]),N=ms.reduce((a,b)=>a+b,0);
+  let den=1n,mxs=0;ws.forEach((w,i)=>{den*=BI(w)**BI(ms[i]);mxs+=ms[i]*(w-1)});
+  const t=T-1-S.off;let cnt=0n;
+  if(t<0)cnt=0n;else if(t>=mxs)cnt=den;else{
+   const rec=(i,sw,pc)=>{
+    if(i===ws.length){const a=t-sw;if(a<0)return;let pr=1n;for(let j=1;j<=N;j++)pr*=BI(a+j);cnt+=pc*pr/fact[N];return}
+    for(let s=0;s<=ms[i];s++){const sw2=sw+s*ws[i];if(sw2>t)break;rec(i+1,sw2,(s%2?-1n:1n)*pc*C(ms[i],s))}};
+   rec(0,0,1n)}
+  le+=S.w*cnt*(Lw/den)}
+ return{num:L-le,den:L}}
+function decStr(num,den,sig=15){
+ if(num===0n)return '0';let n=num*100n,e=n.toString().length-den.toString().length,pw=sig-e+1,q;
+ q=pw>=0?n*10n**BigInt(pw)/den:n/(den*10n**BigInt(-pw));let t=q.toString();while(t.length>sig){t=t.slice(0,-1);pw--}
+ const x=t.length-1-pw;
+ if(x>=-3&&x<=1)return x>=0?t.slice(0,x+1)+'.'+t.slice(x+1):'0.'+'0'.repeat(-x-1)+t;
+ return t[0]+'.'+t.slice(1)+'e'+x}
+const isHp=c=>!!c.hp&&c.ha!==''&&c.hb!==''&&c.ha!=null&&c.hb!=null&&(+c.ha)+(+c.hb)!==0;
+function hpScale(c){if(!isHp(c))return 1;const H=+$('maxhp').value,H0=Math.min(H,+$('curhp').value||H),rd=Math.max(1e-4,H0/H),sf=r=>(+c.ha+ +c.hb*r)/(+c.ha+ +c.hb*rd);return Math.max(1,sf(1e-4),sf(Math.max(1e-4,H0/H)))}
+function pts(lo,hi,K){let A=lo,B=hi;
+ if(hi>=CAP&&G.st>0)B=Math.max(B,A/Math.min(1,G.st/(G.st+1000)+.2));
+ if(B<=A)return[A];const o=[];for(let k=0;k<K;k++)o.push(A+(B-A)*(k+.5)/K);return o}
+function computeHP(cs,gc,Dfix,Ys,maxTfix){
+ const H=+$('maxhp').value,H0=Math.min(H,+$('curhp').value||H),rd=c=>Math.max(1e-4,H0/H),sf=(c,r)=>(+c.ha+ +c.hb*r)/(+c.ha+ +c.hb*rd(c)),fc=c=>isHp(c)?Math.max(1,sf(c,1e-4),sf(c,Math.max(1e-4,H0/H))):1;
+ let maxT=maxTfix||0;if(!maxTfix)for(const c of cs)maxT+=c.hits*Math.max(c.cmax,c.nmax,c.cmin,c.nmin)*fc(c);
+ const D=Dfix||Math.max(1,Math.ceil(maxT/20000)),N=Math.floor(maxT/D)+6;
+ let st=new Float64Array(N);st[0]=1;
+ const grp=new Map();(Ys||[]).forEach(({a,Y})=>{const all=[...a.Wc,...a.Qc],last=all.reduce((m,x)=>Math.max(m,x._i),0);all.forEach(c=>grp.set(c,{Y,last}))});
+ const val=v=>Math.min(CAP,v);
+ for(const c of cs){
+  const gi=grp.get(c);if(gi){if(c._i===gi.last){const t=conv(st,gi.Y),z=new Float64Array(N);z.set(t.subarray(0,Math.min(N,t.length)));st=z}continue}
+  if(!(c.hits>0))continue;
+  const p=(c.crit===''||c.crit==null?gc:+c.crit/100),e=(+c.eva||0)/100;
+  const comp=[[c.cmin,c.cmax,(1-e)*p],[c.nmin,c.nmax,(1-e)*(1-p)]].filter(x=>x[2]>0);
+  if(!isHp(c)){
+   const d=new Float64Array(Math.floor((Math.max(c.cmax,c.nmax)+1)/D)+3);d[0]+=e;
+   for(const[a,b,w]of comp)addRange(d,a,b,w,D);
+   const t=conv(st,pw(d,c.hits)),z=new Float64Array(N);z.set(t.subarray(0,Math.min(N,t.length)));st=z;continue}
+  const P=comp.map(([a,b,w])=>{const q=pts(a,b,24);return[q,w/q.length]}),a0=+c.ha,b0=+c.hb;
+  for(let h=0;h<c.hits;h++){const nx=new Float64Array(N);
+   for(let i=0;i<N;i++){const m=st[i];if(m<1e-18)continue;
+    const sc=sf(c,Math.max(1e-4,(H0-i*D)/H));
+    if(e>0)nx[i]+=m*e;
+    for(const[q,w]of P)for(const v of q){const x=i+val(v*sc)/D,j=Math.min(N-2,Math.floor(x)),f=x-j;nx[j]+=m*w*(1-f);nx[j+1]+=m*w*f}}
+   st=nx}}
+ G.D=D;G.pre=st;
+ try{const r=computeBase([],gc,0);r.maxT=maxT;r.hp=true;return r}finally{G.D=0;G.pre=null}}
+const TERR={SS:130,S:120,A:110,D:80};
+const coD=p=>p==='wk'?{tk:0,ex:0,cut:0,terr:'S'}:p==='kei'?{def:1,hurt:0,aff:200}:{};
+const coOf=a=>{const c=Object.assign(coD(a.preset),a.co||{});if(a.preset==='wk'&&!TERR[c.terr])c.terr='S';if(a.preset==='kei'&&![200,100,50].includes(+c.aff))c.aff=200;return c};
+function calcM(a){const c=coOf(a);
+ if(a.preset==='wk')return +(100*(1+c.tk/100)*(1+c.ex/100)*(1-c.cut/100)*(TERR[c.terr]||100)/100).toFixed(4);
+ if(a.preset==='kei')return +(100/(c.def>0?c.def:1)*(1+c.hurt/100)*c.aff/100).toFixed(4);return 100}
+function coUI(a,i){const c=coOf(a),st='width:100%;padding:7px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx)';
+ const N=(k,l)=>`<div><label>${l}</label><input data-ai="${i}" data-co="${k}" type="number" inputmode="decimal" step="any" value="${c[k]}"></div>`;
+ const S=(k,l,o)=>`<div><label>${l}</label><select data-ai="${i}" data-co="${k}" style="${st}">${o.map(([v,t])=>`<option value="${v}"${String(v)===String(c[k])?' selected':''}>${t}</option>`).join('')}</select></div>`;
+ if(a.preset==='wk')return `<div class="g g4" style="margin-top:10px">${N('tk','神秘特効(%)')}${N('ex','EXダメージバフ(%)')}${N('cut','対象のEXダメージカット(%)')}${S('terr','地形適性',[['SS','SS 130%'],['S','S 120%'],['A','A 110%'],['D','D 80%']])}</div>`;
+ if(a.preset==='kei')return `<div class="g g4" style="margin-top:10px">${N('def','敵の防御倍率')}${N('hurt','敵の被ダメージ増減(%)')}${S('aff','属性相性',[[200,'Weak 200%'],[100,'Normal 100%'],[50,'Resist 50%']])}</div>`;
+ return''}
+function renderAcc(){
+ const n=(a,i,k,l,t)=>`<div><label>${l}</label><input data-ai="${i}" data-k="${k}" type="${t||'number'}" inputmode="decimal" step="any" value="${a[k]??''}"></div>`;
+ const pick=(a,i,k,l)=>`<div><label>${l}</label><details style="border:1px solid var(--bd);border-radius:6px;background:var(--bg)"><summary style="padding:7px 8px;cursor:pointer">${sumTxt(a[k])}</summary><div style="max-height:180px;overflow:auto;padding:4px 8px;border-top:1px solid var(--bd)">${cards.map((c,j)=>`<label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--tx);margin:3px 0"><input type="checkbox" style="width:auto" data-ai="${i}" data-k="${k}" data-ci="${j+1}"${idxs(a[k]).includes(j+1)?' checked':''}>#${j+1} ${esc(c.name||'')} <span class="mu">×${c.hits}</span></label>`).join('')||'<span class="mu">カードがありません</span>'}</div></details></div>`;
+ const sel=(i,k,opts,cur)=>`<select data-ai="${i}" data-k="${k}" style="width:100%;padding:7px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx)">${opts.map(([v,l])=>`<option value="${v}"${String(v)===String(cur)?' selected':''}>${l}</option>`).join('')}</select>`;
+ $('accs').innerHTML=ACC.map((a,i)=>`<div class="card"><div class="top"><input data-ai="${i}" data-k="name" value="${esc(a.name||'')}" placeholder="名前">${sel(i,'preset',[['','プリセット'],['wk','ワカモ/カンナ型'],['kei','ケイ型'],['iroha','イロハ(水着)型']],a.preset)}<button class="sub" data-adel="${i}">✕</button></div>
+ <div class="g g4"><div><label>上限の決まり方</label>${sel(i,'type',[['fixed','固定上限'],['hit','ヒット由来']],a.type)}</div>
+ ${pick(a,i,'W','蓄積するカード')}${n(a,i,'alpha','蓄積率(%)')}${n(a,i,'m','爆発倍率(%)')}
+ ${a.type==='fixed'?n(a,i,'atk','基本攻撃力')+n(a,i,'pct','上限倍率(%)'):pick(a,i,'Q','上限を決めるカード')+n(a,i,'kappa','上限係数(%)')}
+ <div><label>爆発に減衰</label>${sel(i,'dec',[[1,'適用'],[0,'適用しない']],a.dec?1:0)}</div></div>
+ ${coUI(a,i)}</div>`).join('')||''}
+const accEv=e=>{const t=e.target,i=t.dataset.ai;if(i==null)return;const k=t.dataset.k,a=ACC[i];if(!a)return;
+  if(t.dataset.co!=null){a.co=Object.assign(coOf(a),a.co||{});a.co[t.dataset.co]=(t.tagName==='SELECT'&&isNaN(+t.value))?t.value:+t.value;a.m=calcM(a);const mi=t.closest('.card').querySelector('[data-k=m]');if(mi)mi.value=a.m;sched();return}
+ if(t.dataset.ci!=null){const s=new Set(idxs(a[k])),c=+t.dataset.ci;t.checked?s.add(c):s.delete(c);a[k]=[...s].sort((x,y)=>x-y).join(',');t.closest('details').querySelector('summary').textContent=sumTxt(a[k]);sched();return}
+ if(k==='preset'){if(!t.value||a.preset===t.value)return;Object.assign(a,PRE[t.value],{preset:t.value});a.co=coD(t.value);a.m=calcM(a);renderAcc();sched();return}
+ if(k==='type'){a.type=t.value;renderAcc();sched();return}
+ if(k==='dec'){a.dec=t.value==='1';sched();return}
+ a[k]=(k==='W'||k==='Q'||k==='name')?t.value:+t.value;sched()};
+['input','change'].forEach(ev=>$('accs').addEventListener(ev,accEv));
+$('accs').addEventListener('click',e=>{if(e.target.dataset.adel!=null){ACC.splice(+e.target.dataset.adel,1);renderAcc();sched()}});
+$('addacc').onclick=()=>{ACC.push({name:'蓄積',preset:'',type:'fixed',W:'',alpha:100,m:100,atk:'',pct:1322,Q:'',kappa:120,dec:true});renderAcc();sched()};
+
+/* ---------- parser ---------- */
+function parse(text,prefix,sureCrit){
+ const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean),out=[],errs=[];
+ let cur=null,mode='n';
+ const num=s=>+s.replace(/[,，\s]/g,'');
+ const rng=s=>{const m=s.match(/^([\d,，]+)\s*[-~〜ー－]\s*([\d,，]+)$/);return m?[num(m[1]),num(m[2])]:(/^[\d,，]+$/.test(s)?[num(s),num(s)]:null)};
+ for(const ln of lines){
+  const h=ln.match(/ヒット\s*(\d[\d\s,，、\-~〜ー－]*)/);
+  if(h){let n=0,bad=false;for(const t of h[1].split(/[,，、]/).map(x=>x.trim()).filter(Boolean)){const m=t.match(/^(\d+)(?:\s*[-~〜ー－]\s*(\d+))?$/);if(!m||(m[2]&&+m[2]<+m[1])){bad=true;break}n+=(m[2]?+m[2]:+m[1])-+m[1]+1}
+   if(bad||!n){errs.push('解析できない行: '+ln);cur=null;continue}
+   cur=blank();cur.hits=n;
+   cur.name=((prefix?prefix+' ':'')+ln).trim();cur.crit='';cur._c=false;out.push(cur);mode='n';continue}
+  if(/^会心/.test(ln)){mode='c';const rest=ln.replace(/^会心[:：]?\s*/,'');if(rest&&cur){const r2=rng(rest);if(r2){cur.cmin=r2[0];cur.cmax=r2[1];cur._c=true}}continue}
+  const r=rng(ln);
+  if(r&&cur){if(mode==='n'){cur.nmin=r[0];cur.nmax=r[1]}else{cur.cmin=r[0];cur.cmax=r[1];cur._c=true}continue}
+  errs.push('解析できない行: '+ln)}
+ for(const c of out){if(!c._c){c.cmin=c.nmin;c.cmax=c.nmax;c.crit=sureCrit?100:0}delete c._c}
+ return{out,errs}}
+
+/* ---------- UI ---------- */
+const F=[['nmin','非会心下限'],['nmax','非会心上限'],['cmin','会心下限'],['cmax','会心上限'],['hits','Hit数'],['en','敵の数'],['crit','会心率'],['eva','回避率(%)'],['hf','HP満タン時の倍率'],['hz','HP0時の倍率']];
+const fN=v=>Number.isFinite(+v)?Math.round(+v).toLocaleString('ja-JP'):'?';
+const rg=(a,b)=>fN(a)+(+a!==+b?'–'+fN(b):'');
+function cardSum(c){const p=c.crit===''||c.crit==null?null:+c.crit,t=[c.hits+'Hit'+(c.en>1?'×'+c.en:'')];
+ if(p!==100)t.push('非会心 '+rg(c.nmin,c.nmax));if(p!==0)t.push('会心 '+rg(c.cmin,c.cmax));
+ t.push('会心率 '+(p===null?'全体':p+'%'));if(c.hp)t.push('HP依存');return t.join(' ・ ')}
+function critCell(c,i){const v=c.crit===''||c.crit==null?'':+c.crit===100?'100':+c.crit===0?'0':'x';
+ return `<div><label>会心率</label><select data-i="${i}" data-k="critm"><option value=""${v===''?' selected':''}>全体の会心率</option><option value="100"${v==='100'?' selected':''}>確定会心</option><option value="0"${v==='0'?' selected':''}>確定非会心</option><option value="x"${v==='x'?' selected':''}>数値指定</option></select>${v==='x'?`<input data-i="${i}" data-k="crit" type="number" inputmode="decimal" step="any" value="${c.crit}" style="margin-top:4px">`:''}${c.nmin===c.cmin&&c.nmax===c.cmax?'<div class="mu" style="margin-top:4px">会心と非会心の値が同じです（会心行なしで取り込んだ場合など）。会心率を変えても結果は変わりません。</div>':''}</div>`}
+function renderCards(){
+ $('cards').innerHTML=cards.map((c,i)=>{const open=c.open===true;
+ return `<div class="card" data-ci="${i}"><div class="top"><span class="hd" data-drag="${i}" title="ドラッグで並べ替え">⠿</span><span class="mu" data-drag="${i}" style="align-self:center">#${i+1}</span><input data-i="${i}" data-k="name" value="${esc(c.name||'')}" placeholder="備考">
+ <button class="sub" data-tg="${i}" aria-label="開閉">${open?'▾':'▸'}</button><button class="sub" data-del="${i}">✕</button></div>
+ ${open?`<div class="row act"><button class="sub" data-up="${i}">↑ 上へ</button><button class="sub" data-dn="${i}">↓ 下へ</button><button class="sub" data-dup="${i}">複製</button></div>
+ <div class="row" style="margin:0 0 8px;align-items:center"><label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--tx);margin:0"><input type="checkbox" data-i="${i}" data-k="hp" ${c.hp?'checked':''} style="width:auto"> HP依存</label></div>
+ <div class="g g4">${F.filter(([k])=>c.hp||!['hf','hz'].includes(k)).map(([k,l])=>k==='crit'?critCell(c,i):`<div><label>${l}</label><input data-i="${i}" data-k="${k}" type="number" inputmode="decimal" step="any" value="${k==='hf'?(c.ha===''||c.ha==null?'':+c.ha+ +c.hb):k==='hz'?(c.ha??''):(c[k]??'')}"></div>`).join('')}</div>`
+ :`<div class="mu sm" data-tg="${i}">${cardSum(c)}</div>`}</div>`}).join('')||''}
+function moveCard(a,b,anim){if(a===b||b<0||b>=cards.length)return;
+ const tops=anim?[...document.querySelectorAll('#cards .card')].map(e=>e.getBoundingClientRect().top):null;
+ remapAcc(n=>{const i=n-1;if(i===a)return b+1;if(a<b&&i>a&&i<=b)return n-1;if(a>b&&i>=b&&i<a)return n+1;return n});
+ const[c]=cards.splice(a,1);cards.splice(b,0,c);renderCards();renderAcc();sched();
+ if(!anim)return;
+ const ne=[...document.querySelectorAll('#cards .card')];
+ ne.forEach((e,i)=>{const o=i===b?a:(a<b&&i>=a&&i<b)?i+1:(a>b&&i>b&&i<=a)?i-1:i,dy=tops[o]-e.getBoundingClientRect().top;
+  if(dy){e.style.transition='none';e.style.transform='translateY('+dy+'px)'}});
+ requestAnimationFrame(()=>requestAnimationFrame(()=>ne.forEach(e=>{if(!e.style.transform)return;e.style.transition='transform .24s ease';e.style.transform='';setTimeout(()=>{e.style.transition=''},260)})))}
+$('cards').addEventListener('input',e=>{const t=e.target,i=t.dataset.i;if(i==null)return;
+ const k=t.dataset.k;if(k==='critm'){const c=cards[i];c.crit=t.value===''?'':t.value==='x'?(+$('crit').value||50):+t.value;renderCards();sched();return}if(k==='hp'){cards[i].hp=t.checked;renderCards();sched();return}if(k==='hf'||k==='hz'){const c=cards[i],f=k==='hf'?+t.value:(+c.ha||0)+(+c.hb||0),z=k==='hz'?+t.value:(+c.ha||0);c.ha=z;c.hb=f-z;sched();return}cards[i][k]=k==='name'?t.value:(['crit','ha','hb'].includes(k)&&t.value===''?'':+t.value);if(k==='name')renderAcc();sched()});
+$('cards').addEventListener('click',e=>{const t=e.target.closest('button,[data-tg]');if(!t)return;let sn=null;
+ if(t.dataset.tg!=null){const c=cards[+t.dataset.tg];c.open=c.open!==true;save();renderCards();return}
+ if(t.dataset.del!=null){sn=snap();const d=+t.dataset.del+1;remapAcc(n=>n<d?n:n===d?0:n-1);cards.splice(+t.dataset.del,1)}
+ else if(t.dataset.dup!=null){const d=+t.dataset.dup+1;remapAcc(n=>n>d?n+1:n);cards.splice(+t.dataset.dup+1,0,{...cards[+t.dataset.dup]})}
+ else if(t.dataset.up!=null){moveCard(+t.dataset.up,+t.dataset.up-1,true);return}
+ else if(t.dataset.dn!=null){moveCard(+t.dataset.dn,+t.dataset.dn+1,true);return}
+ else return;renderCards();renderAcc();sched();if(sn){UN=sn;updUndo()}});
+let DR=null;
+function dragUpd(){const d=DR;if(!d)return;
+ const dy=d.y+scrollY-d.go-d.r[d.a].top;
+ d.el.style.transform='translateY('+dy+'px) scale(1.02)';
+ const ctr=d.r[d.a].c+dy;let t=0;d.r.forEach((q,j)=>{if(j!==d.a&&q.c<ctr)t++});
+ d.t=t;const sh=d.r[d.a].h+6;
+ d.els.forEach((e,j)=>{if(j===d.a)return;let s=0;if(j>d.a&&j<=t)s=-sh;else if(j<d.a&&j>=t)s=sh;e.style.transform=s?'translateY('+s+'px)':''})}
+$('cards').addEventListener('pointerdown',e=>{if(DR)return;const h=e.target.closest('[data-drag]');if(!h)return;e.preventDefault();
+ const el=h.closest('.card'),go0=e.clientY-el.getBoundingClientRect().top;
+ document.body.classList.add('dragging');
+ const els=[...document.querySelectorAll('#cards .card')],a=+h.dataset.drag;
+ const r=els.map(x=>{const b=x.getBoundingClientRect();return{top:b.top+scrollY,h:b.height,c:b.top+scrollY+b.height/2}});
+ DR={a,t:a,el,els,r,go:Math.min(go0,r[a].h/2),x:e.clientX,y:e.clientY};
+ try{navigator.vibrate&&navigator.vibrate(12)}catch(x){}try{h.setPointerCapture(e.pointerId)}catch(x){}
+ els.forEach((x,j)=>{x.style.transform='';x.style.transition='';x.classList.toggle('shift',j!==a)});el.classList.add('drag');dragUpd();
+ DR.iv=setInterval(()=>{if(!DR)return;if(DR.y<80)window.scrollBy(0,-16);else if(DR.y>innerHeight-80)window.scrollBy(0,16);dragUpd()},40)});
+$('cards').addEventListener('pointermove',e=>{if(!DR)return;DR.x=e.clientX;DR.y=e.clientY;dragUpd()});
+const dragEnd=()=>{if(!DR)return;clearInterval(DR.iv);const d=DR;DR=null;
+ let fin=0;if(d.t>d.a){for(let j=d.a+1;j<=d.t;j++)fin+=d.r[j].h+6}else if(d.t<d.a){for(let j=d.t;j<d.a;j++)fin-=d.r[j].h+6}
+ d.el.style.transition='transform .18s ease';d.el.style.transform='translateY('+fin+'px)';
+ setTimeout(()=>{d.els.forEach(x=>{x.classList.remove('drag','shift');x.style.transform='';x.style.transition=''});
+  document.body.classList.remove('dragging');
+  if(d.t!==d.a)moveCard(d.a,d.t);},190)};
+$('cards').addEventListener('pointerup',dragEnd);$('cards').addEventListener('pointercancel',dragEnd);
+$('add').onclick=()=>{cards.push(blank());renderCards();renderAcc();sched()};
+$('openall').onclick=()=>{cards.forEach(c=>c.open=true);save();renderCards()};
+$('closeall').onclick=()=>{cards.forEach(c=>c.open=false);save();renderCards()};
+$('clr').onclick=()=>{if(!cards.length)return;const sn=snap();cards=[];remapAcc(()=>0);renderCards();renderAcc();sched();UN=sn;updUndo()};
+$('imp').onclick=()=>{const{out,errs}=parse($('paste').value,$('prefix').value.trim(),true);
+ out.forEach(c=>c.open=false);cards.push(...out);renderCards();renderAcc();const im=$('impmsg'),bad=!out.length||errs.length;im.className=bad?'warn':'';im.style.color=bad?'':'var(--ok)';im.textContent=!out.length?(errs[0]||'貼り付け欄が空です'):'カードを作成しました（'+out.length+'枚）'+(errs.length?'／'+errs[0]+(errs.length>1?'（他'+(errs.length-1)+'件）':''):'');
+ $('paste').value='';sched()};
+['target','crit','stable','maxhp','curhp'].forEach(id=>$(id).addEventListener('input',sched));
+$('qd').addEventListener('input',q);$('qp').addEventListener('input',q);
+const snap=()=>JSON.stringify({cards,acc:ACC}),updUndo=()=>{$('undo').hidden=!UN};
+$('undo').onclick=()=>{if(!UN)return;const o=JSON.parse(UN);cards=o.cards||[];ACC=o.acc||[];renderCards();renderAcc();sched()};
+function sched(){UN=null;updUndo();save();clearTimeout(timer);timer=setTimeout(run,250)}
+function q(){if(!R)return;
+ const d=$('qd').value;$('qdo').textContent=d===''?'—':pct(pGE(R,+d));
+ const p=$('qp').value;$('qpo').textContent=p===''?'—':fmt(dmgAt(R,+p/100))}
+const FLOOR=1e-14;
+function pct(p,up,exact){if(!exact&&p>0&&p<FLOOR)return '<'+(FLOOR*100).toExponential(0)+'%（精度限界）';if(p<=0)return '0%';if(p>=1)return '100%';
+ const v=p*100,e=Math.floor(Math.log10(v)),k=Math.pow(10,2-e),x=(up?Math.ceil(v*k-1e-7):Math.floor(v*k+1e-7))/k;
+ return(e<-4?x.toExponential(2):x.toFixed(Math.max(0,2-e)))+'%'}
+function minOf(R,cs){
+ if(R.sp)return R.sp.xs[0];
+ if(R.sf){let t=0;for(const c of cs){const n=c.hits*(isHp(c)?1:Math.max(1,Math.round(+c.en||1)));if(n<=0)continue;
+  const p=(c.crit===''||c.crit==null?Math.min(1,Math.max(0,+$('crit').value/100)):+c.crit/100),e=(+c.eva||0)/100,v=[];
+  if(e>0)v.push(0);if((1-e)*p>0)v.push(c.cmin);if((1-e)*(1-p)>0)v.push(c.nmin);
+  t+=n*Math.min(...v.map(x=>Math.min(CAP,x)))}return t}
+ if(R.tot){let i=0;while(i<R.tot.length&&!(R.tot[i]>1e-14))i++;return i*R.D}
+ return 0}
+function run(){
+ G.st=+$('stable').value||0;const warns=[],tv=$('target').value,T=tv===''?NaN:+tv,cv=$('crit').value,gc=Math.min(1,Math.max(0,+cv/100));
+ const cl=v=>Math.min(100,Math.max(0,+v));let clamped=false;
+ const ok=cards.map((c,i)=>{const o={...c,_i:i+1};if(o.crit!==''&&o.crit!=null){const v=cl(o.crit);if(v!==+o.crit)clamped=true;o.crit=Number.isFinite(v)?v:''}const e=cl(o.eva||0);if(e!==(+o.eva||0))clamped=true;o.eva=Number.isFinite(e)?e:0;return o}).filter(c=>[c.nmin,c.nmax,c.cmin,c.cmax,c.hits].every(v=>Number.isFinite(v)&&v>=0)&&Number.isInteger(c.hits));
+ if(!ok.length||!(T>=0)||(cv===''&&ok.some(c=>c.crit===''||c.crit==null))){$('prob').textContent='—';$('stats').innerHTML='';$('ch1').innerHTML=$('ch2').innerHTML='';R=null;$('warns').innerHTML=!(T>=0)?'目標ダメージを入力してください':!ok.length?(cards.length?'有効なカードがありません（空欄・負数・Hit数が整数でない）':''):'全体の会心率を入力してください';return}
+ if(ACC.some(accOk)&&ok.some(isHp)){$('prob').textContent='—';$('stats').innerHTML='';$('ch1').innerHTML=$('ch2').innerHTML='';R=null;$('warns').innerHTML='HP依存カードと蓄積スキルは併用できません。どちらかを外してください（併用の計算は理論的に未検証のため）。';return}
+ if(ok.length<cards.length)warns.push('不正な値のカードを除外しました（負数・Hit数が整数でない等）');
+ if(clamped)warns.push('カードの会心率・回避率を0〜100%に補正しました');
+ for(const c of ok)if(c.hp&&!isHp(c))warns.push('HP依存がONですが倍率が未入力です: '+esc(c.name||'無名'));
+ for(const c of ok)if(c.nmin>c.nmax||c.cmin>c.cmax)warns.push('下限が上限を超えているカードがあります: '+esc(c.name||'無名'));
+ const t0=performance.now();R=compute(ok,gc,T);
+ const pa=pGE(R,T);let ex=null;try{ex=exactP(ok.map(c=>({...c,hits:c.hits*Math.max(1,Math.round(+c.en||1))})),gc,T)}catch(e){}
+ const p=ex?Number(ex.num*10n**40n/ex.den)/1e40:pa;
+ $('prob').innerHTML=(!ex&&p>=FLOOR&&R.method!=='cos'&&R.method!=='lat'?'約 ':'')+pct(p,0,!!ex);if(!ex&&p<FLOOR)warns.push('確率が1e-14未満です。浮動小数点の限界で、この領域の値は信頼できません');
+ if(!G.st&&ok.some(c=>Math.max(c.cmax,c.nmax)>=CAP))warns.push('上限10,969,999に張り付くカードがあります。安定値を入れると真の最大を推定します（推定）');
+ if(Math.abs(R.sum-1)>1e-9)warns.push('確率総和が1からずれています: '+R.sum);
+ if(R.neg>1e-12)warns.push('FFTの負値を0に補正（合計'+R.neg.toExponential(1)+'）');
+ 
+ 
+ if(!(+$('maxhp').value>0)&&ok.some(isHp))warns.push('HP依存カードがあります。敵最大HPを入力してください');
+ 
+ if(R.coarse>1)warns.push('蓄積の計算で格子を粗くしています（粗視化係数'+R.coarse+'）。僅差の比較には向きません');
+ if(R.dup)warns.push('蓄積の窓や上限カードが重複しています。窓は互いに素である必要があり、重複すると結果が誤ります');
+ if(R.method==='fft'&&!ACC.some(accOk))warns.push('連続成分が1個以下で離散成分が混在、または格子が大きすぎるため、COS法・離散DPのどちらも使えずFFT近似（Δ='+R.D+'）です。境界付近は数%ずれることがあります');
+ if(R.method==='cos'&&!R.conv)warns.push('COS法の項数を増やしても結果が収束しきっていません（項数'+R.M+'）');
+ const mn=minOf(R,ok);
+ const S=[['期待値',fmt(R.mean)],['最小〜最大',fmt(mn)+' 〜 '+fmt(R.maxT)],['期待値との差',(R.mean-T>=0?'+':'')+fmt(R.mean-T)],...(ex?[['グラフ・逆引きでの値（連続近似）',pct(pa)]]:[]),...(R.sats||[]).map((x,i)=>['蓄積'+(i+1)+'の飽和確率',pct(x)])];
+ $('stats').innerHTML=S.map(([a,b])=>`<div><span class="mu">${a}</span><b>${b}</b></div>`).join('');
+ $('warns').innerHTML=[...new Set(warns)].join('<br>');
+ chart(T);q()}
+let logY=false;
+function chart(T){
+ const r=R,N=r.tot.length,D=r.D,W=420,H=230,L=46,Rm=12,Tp=18,B=28,pw=W-L-Rm,ph=H-B-Tp;
+ let lo=0,hi=N-1;while(lo<N-1&&r.tot[lo]<1e-13)lo++;while(hi>0&&r.tot[hi]<1e-13)hi--;
+ if(lo>=hi){hi=Math.min(N-1,lo+2)}
+ let x0=Math.min(lo*D,T,r.mean),x1=Math.max(hi*D,T,r.mean);const pad=(x1-x0)*.03||1;x0=Math.max(0,x0-pad);x1+=pad;
+ const X=v=>L+(v-x0)/(x1-x0)*pw,Pf=v=>pGE(r,v);
+ const fx=v=>{const a=Math.abs(v);return a>=1e6?(+(v/1e6).toFixed(2))+'M':a>=1e3?(+(v/1e3).toFixed(1))+'k':''+Math.round(v)};
+ const fp=p=>{const v=p*100;return v>=100?'100%':v>=0.001?(+v.toPrecision(3))+'%':v===0?'0%':v.toExponential(1)+'%'};
+ const nt=(a,b,n)=>{const raw=(b-a)/n,q=10**Math.floor(Math.log10(raw)),m=raw/q,st=(m<1.5?1:m<3?2:m<7?5:10)*q,o=[];for(let v=Math.ceil(a/st-1e-9)*st;v<=b+1e-9;v+=st)o.push(v);return o};
+ const txt=(x,y,t,an,c)=>`<text x="${x}" y="${y}" font-size="13" fill="${c||'var(--mu)'}" text-anchor="${an||'middle'}">${t}</text>`;
+ const xa=nt(x0,x1,pw<300?4:6).map(v=>`<line x1="${X(v)}" x2="${X(v)}" y1="${Tp}" y2="${Tp+ph}" stroke="var(--bd)" opacity=".5"/>`+txt(X(v),H-8,fx(v))).join('');
+ const side=X(T)>L+pw*.6?'end':'start',mk=()=>`<line x1="${X(r.mean)}" x2="${X(r.mean)}" y1="${Tp}" y2="${Tp+ph}" stroke="var(--rd)" stroke-dasharray="4 3"/>`+txt(X(r.mean)+(side==='end'?4:-4),Tp-5,'期待値',side==='end'?'start':'end','var(--rd)')+`<line x1="${X(T)}" x2="${X(T)}" y1="${Tp}" y2="${Tp+ph}" stroke="var(--ok)" stroke-width="2"/>`+txt(X(T)+(side==='end'?-4:4),Tp-5,'目標',side,'var(--ok)');
+ const hv=svg=>{const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('style','display:none;pointer-events:none');g.innerHTML=`<line y1="${Tp}" y2="${Tp+ph}" stroke="var(--tx)" opacity=".6"/><text x="${L+6}" y="${Tp+14}" font-size="14" font-weight="700" fill="var(--tx)" style="paint-order:stroke;stroke:var(--sf);stroke-width:3px"></text>`;svg.appendChild(g);
+  const mv=e=>{const rc=svg.getBoundingClientRect(),px=(e.clientX-rc.left)/rc.width*W;if(px<L||px>L+pw){g.style.display='none';return}const v=x0+(px-L)/pw*(x1-x0);g.style.display='';g.firstChild.setAttribute('x1',px);g.firstChild.setAttribute('x2',px);g.lastChild.textContent=fx(v)+'  以上 '+fp(Pf(v))};
+  svg.addEventListener('pointermove',mv);svg.addEventListener('pointerdown',mv);svg.addEventListener('pointerleave',()=>{g.style.display='none'})};
+ // 以上確率
+ let lmin=-2;if(logY){const pe=Pf(hi*D);lmin=Math.max(-14,Math.min(-2,Math.floor(Math.log10(Math.max(pe,1e-14)))))}
+ const Y=p=>{if(!logY)return Tp+(1-Math.min(1,p))*ph;if(p<=0)return Tp+ph;const l=Math.max(lmin,Math.log10(p));return Tp+(l/lmin)*ph};
+ let ya='';
+ if(logY){const stp=Math.ceil(-lmin/5);for(let e=0;e>=lmin;e-=stp)ya+=`<line x1="${L}" x2="${L+pw}" y1="${Y(10**e)}" y2="${Y(10**e)}" stroke="var(--bd)" opacity=".5"/>`+txt(L-5,Y(10**e)+4,fp(10**e),'end')}
+ else[0,.25,.5,.75,1].forEach(v=>{ya+=`<line x1="${L}" x2="${L+pw}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--bd)" opacity=".5"/>`+txt(L-5,Y(v)+4,Math.round(v*100)+'%','end')});
+ const n=Math.min(Math.round(pw),400);let d='';
+ for(let k=0;k<=n;k++){const v=x0+(x1-x0)*k/n;d+=(k?'L':'M')+X(v).toFixed(1)+' '+Y(Pf(v)).toFixed(1)}
+ const area=d+`L${X(x1).toFixed(1)} ${Tp+ph}L${L} ${Tp+ph}Z`,pT=Pf(T);
+ $('ch1').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="touch-action:pan-y">${xa}${ya}<path d="${area}" fill="var(--ac)" opacity=".12"/><path d="${d}" fill="none" stroke="var(--ac)" stroke-width="2.2" stroke-linejoin="round"/>${mk()}<circle cx="${X(T)}" cy="${Y(pT)}" r="4.5" fill="var(--ok)" stroke="var(--sf)" stroke-width="1.5"/></svg>`;
+ hv($('ch1').firstChild);
+ // 確率分布
+ const nb=Math.max(24,Math.min(90,Math.round(pw/4))),bk=new Float64Array(nb);let mxb=0;
+ for(let i=lo;i<=hi;i++){const bi=Math.min(nb-1,Math.max(0,Math.floor((i*D-x0)/(x1-x0)*nb)));bk[bi]+=r.tot[i]}
+ for(const v of bk)if(v>mxb)mxb=v;
+ const bw=pw/nb;let bars='';
+ for(let k=0;k<nb;k++){const h=mxb?bk[k]/mxb*ph:0;if(h<.3)continue;const c=x0+(k+.5)*(x1-x0)/nb;
+  bars+=`<rect x="${(L+k*bw+.4).toFixed(1)}" y="${(Tp+ph-h).toFixed(1)}" width="${Math.max(.5,bw-.8).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${c>=T?'var(--ok)':'var(--ac)'}" opacity=".85"/>`}
+ $('ch2').innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="touch-action:pan-y">${xa}<line x1="${L}" x2="${L+pw}" y1="${Tp+ph}" y2="${Tp+ph}" stroke="var(--bd)"/>${bars}${mk()}</svg>`;
+ hv($('ch2').firstChild)}
+$('logt').onclick=()=>{logY=!logY;$('logt').textContent=logY?'線形軸':'対数軸';if(R)chart(+$('target').value)};
+load();
+renderCards();renderAcc();run();
+(function(){const r=document.documentElement,b=$('theme'),K='dmgcalc.theme';
+const eff=()=>r.dataset.theme||((window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light');
+const show=()=>{b.textContent=eff()==='dark'?'☀️':'🌙'};
+try{const t=localStorage.getItem(K);if(t)r.dataset.theme=t}catch(e){}
+b.onclick=()=>{const n=eff()==='dark'?'light':'dark';r.dataset.theme=n;try{localStorage.setItem(K,n)}catch(e){}show()};show()})();
+$('howto').onclick=()=>{const m=$('man');m.open=!m.open;if(m.open)m.scrollIntoView({block:'start'})};
+</script>
+<script>
+(function(){var p=document.getElementById('prob'),m=document.querySelector('#mini b');
+function sync(){m.textContent=p.textContent.trim().split('（')[0];}
+new MutationObserver(sync).observe(p,{childList:true,characterData:true,subtree:true});sync()})();
+</script>
+</body>
+</html>
